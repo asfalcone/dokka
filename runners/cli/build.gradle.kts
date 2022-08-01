@@ -6,7 +6,7 @@ plugins {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-cli-jvm:0.3.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-cli-jvm:0.3.5")
     implementation(project(":core"))
     implementation(kotlin("stdlib"))
     testImplementation(kotlin("test-junit"))
