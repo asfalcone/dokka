@@ -33,7 +33,7 @@ data class ContentText(
 ) : ContentNode {
     override fun withNewExtras(newExtras: PropertyContainer<ContentNode>): ContentText = copy(extra = newExtras)
     override fun withSourceSets(sourceSets: Set<DisplaySourceSet>): ContentText = copy(sourceSets = sourceSets)
-    override fun hasAnyContent(): Boolean = !text.isBlank()
+    override fun hasAnyContent(): Boolean = text.isNotBlank()
 }
 
 // TODO: Remove
@@ -317,9 +317,8 @@ interface Style
 interface Kind
 
 /**
- * [ContentKind] represents a grouping of content of one kind. This can be rendered
- * as either a part of a composite page (one tab/block within a class's page, for instance)
- * or as a separate page altogether.
+ * [ContentKind] represents a grouping of content of one kind that can can be rendered
+ * as part of a composite page (one tab/block within a class's page, for instance).
  */
 enum class ContentKind : Kind {
 
@@ -383,7 +382,9 @@ enum class TokenStyle : Style {
 }
 
 enum class TextStyle : Style {
-    Bold, Italic, Strong, Strikethrough, Paragraph, Block, Span, Monospace, Indented, Cover, UnderCoverText, BreakableAfter, Breakable
+    Bold, Italic, Strong, Strikethrough, Paragraph,
+    Block, Span, Monospace, Indented, Cover, UnderCoverText, BreakableAfter, Breakable, InlineComment, Quotation,
+    FloatingRight
 }
 
 enum class ContentStyle : Style {

@@ -52,19 +52,24 @@ class JavaSignatureProvider internal constructor(ctcc: CommentsToContentConverte
         }
 
     private fun signature(c: DClasslike) =
-        c.sourceSets.map {
+        c.sourceSets.map { sourceSet ->
+            @Suppress("UNCHECKED_CAST")
+            val deprecationStyles = (c as? WithExtraProperties<out Documentable>)
+                ?.stylesIfDeprecated(sourceSet)
+                ?: emptySet()
+
             contentBuilder.contentFor(
                 c,
                 ContentKind.Symbol,
-                setOf(TextStyle.Monospace) + ((c as? WithExtraProperties<out Documentable>)?.stylesIfDeprecated(it)
-                    ?: emptySet()),
-                sourceSets = setOf(it)
+                setOf(TextStyle.Monospace) + deprecationStyles,
+                sourceSets = setOf(sourceSet)
             ) {
-                c.visibility[it]?.takeIf { it !in ignoredVisibilities }?.name?.plus(" ")?.let { keyword(it) }
+                annotationsBlock(c)
+                c.visibility[sourceSet]?.takeIf { it !in ignoredVisibilities }?.name?.plus(" ")?.let { keyword(it) }
 
                 if (c is DClass) {
-                    c.modifier[it]?.takeIf { it !in ignoredModifiers }?.name?.plus(" ")?.let { keyword(it) }
-                    c.modifiers()[it]?.toSignatureString()?.let { keyword(it) }
+                    c.modifier[sourceSet]?.takeIf { it !in ignoredModifiers }?.name?.plus(" ")?.let { keyword(it) }
+                    c.modifiers()[sourceSet]?.toSignatureString()?.let { keyword(it) }
                 }
 
                 when (c) {
@@ -110,7 +115,7 @@ class JavaSignatureProvider internal constructor(ctcc: CommentsToContentConverte
             ) {
                 annotationsBlock(p)
                 p.visibility[it]?.takeIf { it !in ignoredVisibilities }?.name?.let { keyword("$it ") }
-                p.modifier[it]?.name?.let { keyword("$it ") }
+                p.modifier[it]?.takeIf { it !in ignoredModifiers }?.name?.let { keyword("$it ") }
                 p.modifiers()[it]?.toSignatureString()?.let { keyword(it) }
                 signatureForProjection(p.type)
                 text(nbsp.toString())
@@ -127,6 +132,7 @@ class JavaSignatureProvider internal constructor(ctcc: CommentsToContentConverte
                 sourceSets = setOf(sourceSet)
             ) {
                 annotationsBlock(f)
+                f.visibility[sourceSet]?.takeIf { it !in ignoredVisibilities }?.name?.let { keyword("$it ") }
                 f.modifier[sourceSet]?.takeIf { it !in ignoredModifiers }?.name?.plus(" ")?.let { keyword(it) }
                 f.modifiers()[sourceSet]?.toSignatureString()?.let { keyword(it) }
                 val returnType = f.type
@@ -156,6 +162,7 @@ class JavaSignatureProvider internal constructor(ctcc: CommentsToContentConverte
     private fun signature(t: DTypeParameter) =
         t.sourceSets.map {
             contentBuilder.contentFor(t, styles = t.stylesIfDeprecated(it), sourceSets = setOf(it)) {
+                annotationsInline(t)
                 text(t.name.substringAfterLast("."))
                 list(t.bounds, prefix = " extends ",
                     separatorStyles = mainStyles + TokenStyle.Punctuation,
@@ -167,9 +174,13 @@ class JavaSignatureProvider internal constructor(ctcc: CommentsToContentConverte
         }
 
     private fun PageContentBuilder.DocumentableContentBuilder.signatureForProjection(p: Projection): Unit = when (p) {
-        is TypeParameter -> link(p.name, p.dri)
+        is TypeParameter -> {
+            annotationsInline(p)
+            link(p.name, p.dri)
+        }
 
         is TypeConstructor -> group(styles = emptySet()) {
+            annotationsInline(p)
             link(p.dri.classNames.orEmpty(), p.dri)
             list(p.projections, prefix = "<", suffix = ">",
                 separatorStyles = mainStyles + TokenStyle.Punctuation,
@@ -191,6 +202,7 @@ class JavaSignatureProvider internal constructor(ctcc: CommentsToContentConverte
         is Star -> operator("?")
 
         is Nullable -> signatureForProjection(p.inner)
+        is DefinitelyNonNullable -> signatureForProjection(p.inner)
 
         is JavaObject, is Dynamic -> link("Object", DRI("java.lang", "Object"))
         is Void -> text("void")

@@ -4,15 +4,16 @@ import matchers.content.*
 import org.jetbrains.dokka.DokkaConfiguration
 import org.jetbrains.dokka.base.testApi.testRunner.BaseAbstractTest
 import org.jetbrains.dokka.jdk
+import org.jetbrains.dokka.links.DRI
+import org.jetbrains.dokka.model.Annotations
+import org.jetbrains.dokka.model.GenericTypeConstructor
 import org.jetbrains.dokka.model.dfs
 import org.jetbrains.dokka.pages.*
 import org.jetbrains.kotlin.utils.addToStdlib.cast
 import org.junit.Assert
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
-import signatures.Parameter
-import signatures.Parameters
-import signatures.renderedContent
-import signatures.signature
+import signatures.*
 import utils.*
 import kotlin.test.assertEquals
 
@@ -175,7 +176,7 @@ class KotlinAsJavaPluginTest : BaseAbstractTest() {
                         divergentInstance {
                             divergent {
                                 group {
-                                    +"final "
+                                    +"public final "
                                     group {
                                         link {
                                             +"String"
@@ -329,10 +330,10 @@ class KotlinAsJavaPluginTest : BaseAbstractTest() {
             cleanupOutput = true
         ) {
             renderingStage = { _, _ ->
-                writerPlugin.writer.renderedContent("root/kotlinAsJavaPlugin/-a-b-c/some-fun.html").signature().first().match(
-                    "final ", A("Integer"), A("someFun"), "(", Parameters(
+                writerPlugin.writer.renderedContent("root/kotlinAsJavaPlugin/-a-b-c/some-fun.html").firstSignature().match(
+                    "public final ", A("Integer"), A("someFun"), "(", Parameters(
                         Parameter(A("Integer"), "xd")
-                    ), ")", Span(), ignoreSpanWithTokenStyle = true
+                    ), ")", ignoreSpanWithTokenStyle = true
                 )
             }
         }
@@ -368,10 +369,10 @@ class KotlinAsJavaPluginTest : BaseAbstractTest() {
             cleanupOutput = true
         ) {
             renderingStage = { _, _ ->
-                writerPlugin.writer.renderedContent("root/kotlinAsJavaPlugin/-a-b-c/some-fun.html").signature().first().match(
-                    "final ", A("Integer"), A("someFun"), "(", Parameters(
+                writerPlugin.writer.renderedContent("root/kotlinAsJavaPlugin/-a-b-c/some-fun.html").firstSignature().match(
+                    "public final ", A("Integer"), A("someFun"), "(", Parameters(
                         Parameter(A("Map"), "<", A("String"), ", ", A("Integer"), "> xd"),
-                    ), ")", Span(), ignoreSpanWithTokenStyle = true
+                    ), ")", ignoreSpanWithTokenStyle = true
                 )
             }
         }
@@ -434,10 +435,10 @@ class KotlinAsJavaPluginTest : BaseAbstractTest() {
             cleanupOutput = true
         ) {
             renderingStage = { _, _ ->
-                writerPlugin.writer.renderedContent("root/kotlinAsJavaPlugin/-test-kt/sample.html").signature().first().match(
-                    "final static ", A("String"), A("sample"), "(", Parameters(
+                writerPlugin.writer.renderedContent("root/kotlinAsJavaPlugin/-test-kt/sample.html").firstSignature().match(
+                    "public final static ", A("String"), A("sample"), "(", Parameters(
                         Parameter(A("Integer"), "a"),
-                    ), ")", Span(), ignoreSpanWithTokenStyle = true
+                    ), ")", ignoreSpanWithTokenStyle = true
                 )
             }
         }
@@ -479,10 +480,10 @@ class KotlinAsJavaPluginTest : BaseAbstractTest() {
                 assertEquals("Constructors", text.text)
             }
             renderingStage = { _, _ ->
-                writerPlugin.writer.renderedContent("root/kotlinAsJavaPlugin/-test/-test.html").signature().first().match(
+                writerPlugin.writer.renderedContent("root/kotlinAsJavaPlugin/-test/-test.html").firstSignature().match(
                     A("Test"), A("Test"), "(", Parameters(
                         Parameter(A("Integer"), "xd")
-                    ), ")", Span(), ignoreSpanWithTokenStyle = true
+                    ), ")", ignoreSpanWithTokenStyle = true
                 )
             }
         }
@@ -524,13 +525,107 @@ class KotlinAsJavaPluginTest : BaseAbstractTest() {
                 assertEquals("Constructors", text.text)
             }
             renderingStage = { _, _ ->
-                writerPlugin.writer.renderedContent("root/kotlinAsJavaPlugin/-wrapped/-wrapped.html").signature().first().match(
+                writerPlugin.writer.renderedContent("root/kotlinAsJavaPlugin/-wrapped/-wrapped.html").firstSignature().match(
                     A("Wrapped"), A("Wrapped"), "(", Parameters(
                         Parameter(A("Integer"), "xd,").withClasses("indented"),
                         Parameter(A("Long"), "l,").withClasses("indented"),
                         Parameter(A("String"), "s").withClasses("indented"),
-                    ).withClasses("wrapped"), ")", Span(), ignoreSpanWithTokenStyle = true
+                    ).withClasses("wrapped"), ")", ignoreSpanWithTokenStyle = true
                 )
+            }
+        }
+    }
+
+    /**
+     * Kotlin Int becomes java int. Java int cannot be annotated in source, but Kotlin Int can be.
+     * This is paired with DefaultDescriptorToDocumentableTranslatorTest.`Java primitive annotations work`()
+     *
+     * This test currently does not do anything because Kotlin.Int currently becomes java.lang.Integer not primitive int
+     */
+    @Test
+    fun `Java primitive annotations work`() {
+        val writerPlugin = TestOutputWriterPlugin()
+        val configuration = dokkaConfiguration {
+            sourceSets {
+                sourceSet {
+                    sourceRoots = listOf("src/")
+                    externalDocumentationLinks = listOf(
+                        DokkaConfiguration.ExternalDocumentationLink.jdk(8),
+                        stdlibExternalDocumentationLink
+                    )
+                }
+            }
+        }
+        testInline(
+            """
+            |/src/main/kotlin/kotlinAsJavaPlugin/Test.kt
+            |package kotlinAsJavaPlugin
+            |@MustBeDocumented
+            |@Target(AnnotationTarget.TYPE)
+            |annotation class Hello()
+            |fun bar(): @Hello() Int
+        """.trimMargin(),
+            configuration,
+            pluginOverrides = listOf(writerPlugin),
+            cleanupOutput = true
+        ) {
+            documentablesTransformationStage = { module ->
+                val type = module.packages.single()
+                    .classlikes.first { it.name == "TestKt" }
+                    .functions.single()
+                    .type as GenericTypeConstructor
+                Assertions.assertEquals(
+                    Annotations.Annotation(DRI("kotlinAsJavaPlugin", "Hello"), emptyMap()),
+                    type.extra[Annotations]?.directAnnotations?.values?.single()?.single()
+                )
+                // A bug; the GenericTypeConstructor cast should fail and this should be a PrimitiveJavaType
+                Assertions.assertEquals("java.lang/Integer///PointingToDeclaration/", type.dri.toString())
+            }
+        }
+    }
+
+    @Test
+    fun `Java function should keep its access modifier`(){
+        val className = "Test"
+        val accessModifier = "public"
+        val methodName = "method"
+
+        val testClassQuery = """
+            |/src/main/kotlin/kotlinAsJavaPlugin/${className}.java
+            |package kotlinAsJavaPlugin;
+            |
+            |public class $className {
+            |   $accessModifier void ${methodName}() {
+            |   
+            |   }
+            |}
+            """.trimMargin()
+
+        val configuration = dokkaConfiguration {
+            sourceSets {
+                sourceSet {
+                    sourceRoots = listOf("src/")
+                }
+            }
+        }
+
+        val writerPlugin = TestOutputWriterPlugin()
+
+        testInline(
+            testClassQuery,
+            configuration,
+            pluginOverrides = listOf(writerPlugin),
+            cleanupOutput = true
+        ) {
+            renderingStage = { _, _ ->
+                val methodDocumentation = "root/kotlinAsJavaPlugin/-${className.toLowerCase()}/${methodName}.html"
+
+                writerPlugin.writer.renderedContent(methodDocumentation)
+                    .firstSignature()
+                    .match(
+                        "$accessModifier void ", A(methodName), "()",
+                        ignoreSpanWithTokenStyle = true
+                    )
             }
         }
     }

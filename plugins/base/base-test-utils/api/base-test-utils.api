@@ -62,8 +62,8 @@ public final class org/jetbrains/dokka/base/testApi/testRunner/BaseTestMethods :
 }
 
 public final class renderers/RawTestPage : org/jetbrains/dokka/pages/RootPageNode, org/jetbrains/dokka/pages/ContentPage {
-	public fun <init> (Lorg/jetbrains/dokka/pages/ContentNode;Ljava/lang/String;Ljava/util/Set;Lorg/jetbrains/dokka/model/Documentable;Ljava/util/List;Ljava/util/List;)V
-	public synthetic fun <init> (Lorg/jetbrains/dokka/pages/ContentNode;Ljava/lang/String;Ljava/util/Set;Lorg/jetbrains/dokka/model/Documentable;Ljava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Lorg/jetbrains/dokka/pages/ContentNode;Ljava/lang/String;Ljava/util/Set;Ljava/util/List;Ljava/util/List;)V
+	public synthetic fun <init> (Lorg/jetbrains/dokka/pages/ContentNode;Ljava/lang/String;Ljava/util/Set;Ljava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public fun getChildren ()Ljava/util/List;
 	public fun getContent ()Lorg/jetbrains/dokka/pages/ContentNode;
 	public fun getDocumentable ()Lorg/jetbrains/dokka/model/Documentable;
@@ -95,6 +95,7 @@ public final class signatures/Parameters : utils/Tag {
 
 public final class signatures/SignatureUtilsKt {
 	public static final fun firstSignature (Lorg/jsoup/nodes/Element;)Lorg/jsoup/nodes/Element;
+	public static final fun lastSignature (Lorg/jsoup/nodes/Element;)Lorg/jsoup/nodes/Element;
 	public static final fun renderedContent (Lutils/TestOutputWriter;Ljava/lang/String;)Lorg/jsoup/nodes/Element;
 	public static synthetic fun renderedContent$default (Lutils/TestOutputWriter;Ljava/lang/String;ILjava/lang/Object;)Lorg/jsoup/nodes/Element;
 	public static final fun signature (Lorg/jsoup/nodes/Element;)Lorg/jsoup/select/Elements;
@@ -109,6 +110,10 @@ public final class utils/AssertHtmlEqualsIgnoringWhitespaceKt {
 }
 
 public final class utils/B : utils/Tag {
+	public fun <init> ([Ljava/lang/Object;)V
+}
+
+public final class utils/BlockQuote : utils/Tag {
 	public fun <init> ([Ljava/lang/Object;)V
 }
 

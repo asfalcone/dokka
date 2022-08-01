@@ -19,6 +19,7 @@ data class DokkaConfigurationImpl(
     override val suppressObviousFunctions: Boolean = DokkaDefaults.suppressObviousFunctions,
     override val includes: Set<File> = emptySet(),
     override val suppressInheritedMembers: Boolean = DokkaDefaults.suppressInheritedMembers,
+    override val finalizeCoroutines: Boolean = true,
 ) : DokkaConfiguration
 
 data class PluginConfigurationImpl(
@@ -36,14 +37,15 @@ data class DokkaSourceSetImpl(
     override val dependentSourceSets: Set<DokkaSourceSetID> = emptySet(),
     override val samples: Set<File> = emptySet(),
     override val includes: Set<File> = emptySet(),
+    @Deprecated("Use [documentedVisibilities] property for a more flexible control over documented visibilities")
     override val includeNonPublic: Boolean = DokkaDefaults.includeNonPublic,
     override val reportUndocumented: Boolean = DokkaDefaults.reportUndocumented,
     override val skipEmptyPackages: Boolean = DokkaDefaults.skipEmptyPackages,
     override val skipDeprecated: Boolean = DokkaDefaults.skipDeprecated,
     override val jdkVersion: Int = DokkaDefaults.jdkVersion,
-    override val sourceLinks: Set<SourceLinkDefinitionImpl> = emptySet(),
-    override val perPackageOptions: List<PackageOptionsImpl> = emptyList(),
-    override val externalDocumentationLinks: Set<ExternalDocumentationLinkImpl> = emptySet(),
+    override val sourceLinks: Set<SourceLinkDefinitionImpl> = mutableSetOf(),
+    override val perPackageOptions: List<PackageOptionsImpl> = mutableListOf(),
+    override val externalDocumentationLinks: Set<ExternalDocumentationLinkImpl> = mutableSetOf(),
     override val languageVersion: String? = null,
     override val apiVersion: String? = null,
     override val noStdlibLink: Boolean = DokkaDefaults.noStdlibLink,
@@ -78,6 +80,7 @@ data class SourceLinkDefinitionImpl(
 
 data class PackageOptionsImpl(
     override val matchingRegex: String,
+    @Deprecated("Use [documentedVisibilities] property for a more flexible control over documented visibilities")
     override val includeNonPublic: Boolean,
     override val reportUndocumented: Boolean?,
     override val skipDeprecated: Boolean,

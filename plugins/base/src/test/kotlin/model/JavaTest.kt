@@ -52,7 +52,10 @@ class JavaTest : AbstractModelTest("/src/main/kotlin/java/Test.java", "java") {
                 with((this / "fn").cast<DFunction>()) {
                     name equals "fn"
                     val params = parameters.map { it.documentation.values.first().children.first() as Param }
-                    params.mapNotNull { it.firstMemberOfType<Text>()?.body } equals listOf("is String parameter", "is int parameter")
+                    params.map { it.firstMemberOfType<Text>().body } equals listOf(
+                        "is String parameter",
+                        "is int parameter"
+                    )
                 }
             }
         }
@@ -160,7 +163,7 @@ class JavaTest : AbstractModelTest("/src/main/kotlin/java/Test.java", "java") {
 
                 constructors counts 2
                 constructors.forEach { it.name equals "Test" }
-                constructors.find { it.parameters.isNullOrEmpty() }.assertNotNull("Test()")
+                constructors.find { it.parameters.isEmpty() }.assertNotNull("Test()")
 
                 with(constructors.find { it.parameters.isNotEmpty() }.assertNotNull("Test(String)")) {
                     parameters.firstOrNull()?.type?.name equals "String"
@@ -331,11 +334,6 @@ class JavaTest : AbstractModelTest("/src/main/kotlin/java/Test.java", "java") {
             with((this / "java" / "E").cast<DEnum>()) {
                 name equals "E"
                 entries counts 1
-                functions.sortedBy { it.name }.filter { it.name == "valueOf" || it.name == "values" }.map { it.dri } equals listOf(
-                    DRI("java", "E", DRICallable("valueOf", null, listOf(JavaClassReference("java.lang.String"))), PointingToDeclaration),
-                    DRI("java", "E", DRICallable("values", null, emptyList()), PointingToDeclaration),
-                )
-
                 with((this / "Foo").cast<DEnumEntry>()) {
                     name equals "Foo"
                 }

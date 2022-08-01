@@ -19,7 +19,7 @@ import org.jetbrains.dokka.utilities.DokkaLogger
 import org.jetbrains.dokka.utilities.enumValueOrNull
 import org.jetbrains.dokka.utilities.htmlEscape
 import org.jetbrains.kotlin.idea.kdoc.resolveKDocLink
-import org.jetbrains.kotlin.idea.refactoring.fqName.getKotlinFqName
+import org.jetbrains.kotlin.idea.base.utils.fqname.getKotlinFqName
 import org.jetbrains.kotlin.idea.util.CommentSaver.Companion.tokenType
 import org.jetbrains.kotlin.psi.psiUtil.getNextSiblingIgnoringWhitespace
 import org.jetbrains.kotlin.psi.psiUtil.siblings
@@ -30,7 +30,7 @@ import org.jsoup.nodes.Node
 import org.jsoup.nodes.TextNode
 import java.util.*
 
-interface JavaDocumentationParser {
+fun interface JavaDocumentationParser {
     fun parseDocumentation(element: PsiNamedElement): DocumentationNode
 }
 
@@ -85,7 +85,7 @@ class JavadocParser(
             parseWithChildren = parseWithChildren
         )
 
-    private fun parseDocTag(tag: PsiDocTag, docComment: PsiDocComment, analysedElement: PsiNamedElement): TagWrapper? =
+    private fun parseDocTag(tag: PsiDocTag, docComment: PsiDocComment, analysedElement: PsiNamedElement): TagWrapper =
         enumValueOrNull<JavadocTag>(tag.name)?.let { javadocTag ->
             val resolutionContext = CommentResolutionContext(comment = docComment, tag = javadocTag)
             when (resolutionContext.tag) {

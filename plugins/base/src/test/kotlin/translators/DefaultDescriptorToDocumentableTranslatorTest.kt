@@ -1,14 +1,18 @@
 package translators
 
 import org.jetbrains.dokka.DokkaConfiguration
+import org.jetbrains.dokka.base.testApi.testRunner.BaseAbstractTest
+import org.jetbrains.dokka.links.DRI
 import org.jetbrains.dokka.model.*
-import org.junit.jupiter.api.Assertions.*
 import org.jetbrains.dokka.model.doc.CodeBlock
 import org.jetbrains.dokka.model.doc.P
 import org.jetbrains.dokka.model.doc.Text
-import org.jetbrains.dokka.base.testApi.testRunner.BaseAbstractTest
 import org.junit.Assert
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import kotlin.test.assertNotNull
 
 class DefaultDescriptorToDocumentableTranslatorTest : BaseAbstractTest() {
     val configuration = dokkaConfiguration {
@@ -16,6 +20,16 @@ class DefaultDescriptorToDocumentableTranslatorTest : BaseAbstractTest() {
         sourceSets {
             sourceSet {
                 sourceRoots = listOf("src/main/kotlin")
+            }
+        }
+    }
+
+    @Suppress("DEPRECATION") // for includeNonPublic
+    val javaConfiguration = dokkaConfiguration {
+        sourceSets {
+            sourceSet {
+                sourceRoots = listOf("src/main/java")
+                includeNonPublic = true
             }
         }
     }
@@ -152,79 +166,54 @@ class DefaultDescriptorToDocumentableTranslatorTest : BaseAbstractTest() {
         }
     }
 
-    private sealed class TestSuite {
-        abstract val propertyName: String
-
-        data class PropertyDoesntExist(
-            override val propertyName: String
-        ) : TestSuite()
-
-
-        data class PropertyExists(
-            override val propertyName: String,
-            val modifier: KotlinModifier,
-            val visibility: KotlinVisibility,
-            val additionalModifiers: Set<ExtraModifiers.KotlinOnlyModifiers>
-        ) : TestSuite()
-
-        data class FunctionDoesntExist(
-            override val propertyName: String,
-        ) : TestSuite()
-
-        data class FunctionExists(
-            override val propertyName: String,
-            val modifier: KotlinModifier,
-            val visibility: KotlinVisibility,
-            val additionalModifiers: Set<ExtraModifiers.KotlinOnlyModifiers>
-        ) : TestSuite()
-    }
-
     private fun runTestSuitesAgainstGivenClasses(classlikes: List<DClasslike>, testSuites: List<List<TestSuite>>) {
         classlikes.zip(testSuites).forEach { (classlike, testSuites) ->
             testSuites.forEach { testSuite ->
                 when (testSuite) {
-                    is TestSuite.PropertyDoesntExist -> Assert.assertEquals(
-                        "Test for class ${classlike.name} failed",
+                    is TestSuite.PropertyDoesntExist -> assertEquals(
                         null,
-                        classlike.properties.firstOrNull { it.name == testSuite.propertyName })
+                        classlike.properties.firstOrNull { it.name == testSuite.propertyName },
+                        "Test for class ${classlike.name} failed"
+                    )
                     is TestSuite.PropertyExists -> classlike.properties.single { it.name == testSuite.propertyName }
                         .run {
-                            Assert.assertEquals(
-                                "Test for class ${classlike.name} with property $name failed",
+                            assertEquals(
                                 testSuite.modifier,
-                                modifier.values.single()
+                                modifier.values.single(),
+                                "Test for class ${classlike.name} with property $name failed"
                             )
-                            Assert.assertEquals(
-                                "Test for class ${classlike.name} with property $name failed",
+                            assertEquals(
                                 testSuite.visibility,
-                                visibility.values.single()
+                                visibility.values.single(),
+                                "Test for class ${classlike.name} with property $name failed"
                             )
-                            Assert.assertEquals(
-                                "Test for class ${classlike.name} with property $name failed",
+                            assertEquals(
                                 testSuite.additionalModifiers,
-                                extra[AdditionalModifiers]?.content?.values?.single()
+                                extra[AdditionalModifiers]?.content?.values?.single(),
+                                "Test for class ${classlike.name} with property $name failed"
                             )
                         }
-                    is TestSuite.FunctionDoesntExist -> Assert.assertEquals(
-                        "Test for class ${classlike.name} failed",
+                    is TestSuite.FunctionDoesntExist -> assertEquals(
                         null,
-                        classlike.functions.firstOrNull { it.name == testSuite.propertyName })
+                        classlike.functions.firstOrNull { it.name == testSuite.propertyName },
+                        "Test for class ${classlike.name} failed"
+                    )
                     is TestSuite.FunctionExists -> classlike.functions.single { it.name == testSuite.propertyName }
                         .run {
-                            Assert.assertEquals(
-                                "Test for class ${classlike.name} with function $name failed",
+                            assertEquals(
                                 testSuite.modifier,
-                                modifier.values.single()
+                                modifier.values.single(),
+                                "Test for class ${classlike.name} with function $name failed"
                             )
-                            Assert.assertEquals(
-                                "Test for class ${classlike.name} with function $name failed",
+                            assertEquals(
                                 testSuite.visibility,
-                                visibility.values.single()
+                                visibility.values.single(),
+                                "Test for class ${classlike.name} with function $name failed"
                             )
-                            Assert.assertEquals(
-                                "Test for class ${classlike.name} with function $name failed",
+                            assertEquals(
                                 testSuite.additionalModifiers,
-                                extra[AdditionalModifiers]?.content?.values?.single()
+                                extra[AdditionalModifiers]?.content?.values?.single(),
+                                "Test for class ${classlike.name} with function $name failed"
                             )
                         }
                 }
@@ -479,6 +468,7 @@ class DefaultDescriptorToDocumentableTranslatorTest : BaseAbstractTest() {
     @Test
     fun `derived properties with only public code`() {
 
+        @Suppress("DEPRECATION") // for includeNonPublic
         val configuration = dokkaConfiguration {
             sourceSets {
                 sourceSet {
@@ -663,4 +653,142 @@ class DefaultDescriptorToDocumentableTranslatorTest : BaseAbstractTest() {
             }
         }
     }
+
+    @Disabled // The compiler throws away annotations on unresolved types upstream
+    @Test
+    fun `Can annotate unresolved type`() {
+        testInline(
+            """
+            |/src/main/java/sample/FooLibrary.kt
+            |package sample;
+            |@MustBeDocumented
+            |@Target(AnnotationTarget.TYPE)
+            |annotation class Hello()
+            |fun bar(): @Hello() TypeThatDoesntResolve
+            """.trimMargin(),
+            javaConfiguration
+        ) {
+            documentablesMergingStage = { module ->
+                val type = module.packages.single().functions.single().type as GenericTypeConstructor
+                assertEquals(
+                    Annotations.Annotation(DRI("sample", "Hello"), emptyMap()),
+                    type.extra[Annotations]?.directAnnotations?.values?.single()?.single()
+                )
+            }
+        }
+    }
+
+    /**
+     * Kotlin Int becomes java int. Java int cannot be annotated in source, but Kotlin Int can be.
+     * This is paired with KotlinAsJavaPluginTest.`Java primitive annotations work`()
+     */
+    @Test
+    fun `Java primitive annotations work`() {
+        testInline(
+            """
+            |/src/main/java/sample/FooLibrary.kt
+            |package sample;
+            |@MustBeDocumented
+            |@Target(AnnotationTarget.TYPE)
+            |annotation class Hello()
+            |fun bar(): @Hello() Int
+            """.trimMargin(),
+            javaConfiguration
+        ) {
+            documentablesMergingStage = { module ->
+                val type = module.packages.single().functions.single().type as GenericTypeConstructor
+                assertEquals(
+                    Annotations.Annotation(DRI("sample", "Hello"), emptyMap()),
+                    type.extra[Annotations]?.directAnnotations?.values?.single()?.single()
+                )
+                assertEquals("kotlin/Int///PointingToDeclaration/", type.dri.toString())
+            }
+        }
+    }
+
+    @Test
+    fun `should preserve regular functions that look like accessors, but are not accessors`() {
+        testInline(
+            """
+            |/src/main/kotlin/A.kt
+            |package test
+            |class A {
+            |    private var v: Int = 0
+            |    
+            |    // not accessors because declared separately, just functions
+            |    fun setV(new: Int) { v = new }
+            |    fun getV(): Int = v
+            |}
+        """.trimIndent(),
+            configuration
+        ) {
+            documentablesMergingStage = { module ->
+                val testClass = module.packages.single().classlikes.single { it.name == "A" }
+                val setterLookalike = testClass.functions.firstOrNull { it.name == "setV" }
+                assertNotNull(setterLookalike) {
+                    "Expected regular function not found, wrongly categorized as setter?"
+                }
+
+                val getterLookalike = testClass.functions.firstOrNull { it.name == "getV" }
+                assertNotNull(getterLookalike) {
+                    "Expected regular function not found, wrongly categorized as getter?"
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `should correctly add IsVar extra for properties`() {
+        testInline(
+            """
+            |/src/main/kotlin/A.kt
+            |package test
+            |class A {
+            |    public var mutable: Int = 0
+            |    public val immutable: Int = 0
+            |}
+        """.trimIndent(),
+            configuration
+        ) {
+            documentablesMergingStage = { module ->
+                val testClass = module.packages.single().classlikes.single { it.name == "A" }
+                assertEquals(2, testClass.properties.size)
+
+                val mutable = testClass.properties[0]
+                assertEquals("mutable", mutable.name)
+                assertNotNull(mutable.extra[IsVar])
+
+                val immutable = testClass.properties[1]
+                assertEquals("immutable", immutable.name)
+                assertNull(immutable.extra[IsVar])
+            }
+        }
+    }
+}
+
+private sealed class TestSuite {
+    abstract val propertyName: String
+
+    data class PropertyDoesntExist(
+        override val propertyName: String
+    ) : TestSuite()
+
+
+    data class PropertyExists(
+        override val propertyName: String,
+        val modifier: KotlinModifier,
+        val visibility: KotlinVisibility,
+        val additionalModifiers: Set<ExtraModifiers.KotlinOnlyModifiers>
+    ) : TestSuite()
+
+    data class FunctionDoesntExist(
+        override val propertyName: String,
+    ) : TestSuite()
+
+    data class FunctionExists(
+        override val propertyName: String,
+        val modifier: KotlinModifier,
+        val visibility: KotlinVisibility,
+        val additionalModifiers: Set<ExtraModifiers.KotlinOnlyModifiers>
+    ) : TestSuite()
 }

@@ -18,7 +18,7 @@ import org.jetbrains.dokka.plugability.DokkaContext
 import org.jetbrains.dokka.plugability.plugin
 import org.jetbrains.dokka.plugability.querySingle
 import org.jetbrains.dokka.transformers.pages.PageTransformer
-import org.jetbrains.kotlin.idea.kdoc.resolveKDocSampleLink
+import org.jetbrains.kotlin.idea.kdoc.resolveKDocLink
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.DescriptorToSourceUtils
@@ -35,23 +35,27 @@ abstract class SamplesTransformer(val context: DokkaContext) : PageTransformer {
             "<script src=\"https://unpkg.com/kotlin-playground@1\"></script>"
 
         return input.transformContentPagesTree { page ->
-            page.documentable?.documentation?.entries?.fold(page) { acc, entry ->
-                entry.value.children.filterIsInstance<Sample>().fold(acc) { acc, sample ->
+            val samples = (page as? WithDocumentables)?.documentables?.flatMap {
+                it.documentation.entries.flatMap { entry ->
+                    entry.value.children.filterIsInstance<Sample>().map { entry.key to it }
+                }
+            }
+
+            samples?.fold(page as ContentPage) { acc, (sampleSourceSet, sample) ->
                     acc.modified(
-                        content = acc.content.addSample(page, entry.key, sample.name, analysis),
+                        content = acc.content.addSample(page, sampleSourceSet, sample.name, analysis),
                         embeddedResources = acc.embeddedResources + kotlinPlaygroundScript
                     )
-                }
-            } ?: page
+                } ?: page
         }
     }
 
-    private fun setUpAnalysis(context: DokkaContext) = context.configuration.sourceSets.map { sourceSet ->
-        sourceSet to if (sourceSet.samples.isEmpty()) context.plugin<DokkaBase>()
+    private fun setUpAnalysis(context: DokkaContext) = context.configuration.sourceSets.associateWith { sourceSet ->
+        if (sourceSet.samples.isEmpty()) context.plugin<DokkaBase>()
             .querySingle { kotlinAnalysis }[sourceSet] // from sourceSet.sourceRoots
         else AnalysisEnvironment(DokkaMessageCollector(context.logger), sourceSet.analysisPlatform).run {
             if (analysisPlatform == Platform.jvm) {
-                addClasspath(PathUtil.getJdkClassesRootsFromCurrentJre())
+                configureJdkClasspathRoots()
             }
             sourceSet.classpath.forEach(::addClasspath)
 
@@ -63,7 +67,7 @@ abstract class SamplesTransformer(val context: DokkaContext) : PageTransformer {
             val (facade, _) = createResolutionFacade(environment)
             EnvironmentAndFacade(environment, facade)
         }
-    }.toMap()
+    }
 
     private fun ContentNode.addSample(
         contentPage: ContentPage,
@@ -120,10 +124,11 @@ abstract class SamplesTransformer(val context: DokkaContext) : PageTransformer {
         val packageName = functionName.takeWhile { it != '.' }
         val descriptor = resolutionFacade.resolveSession.getPackageFragment(FqName(packageName))
             ?: return null.also { context.logger.warn("Cannot find descriptor for package $packageName") }
-        val symbol = resolveKDocSampleLink(
+        val symbol = resolveKDocLink(
             BindingContext.EMPTY,
             resolutionFacade,
             descriptor,
+            null,
             functionName.split(".")
         ).firstOrNull() ?: return null.also { context.logger.warn("Unresolved function $functionName in @sample") }
         return DescriptorToSourceUtils.descriptorToDeclaration(symbol)

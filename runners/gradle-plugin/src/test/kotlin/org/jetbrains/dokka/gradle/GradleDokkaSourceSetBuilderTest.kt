@@ -148,6 +148,7 @@ class GradleDokkaSourceSetBuilderTest {
     }
 
     @Test
+    @Suppress("DEPRECATION")
     fun includeNonPublic() {
         val sourceSet = GradleDokkaSourceSetBuilder("", project)
         assertEquals(
@@ -412,7 +413,7 @@ class GradleDokkaSourceSetBuilderTest {
         }, "Expected android sdk in external documentation links")
 
         assertEquals(1, sourceSet.build().externalDocumentationLinks.count {
-            "https://developer.android.com/reference/androidx" in it.packageListUrl.toURI().toString()
+            "https://developer.android.com/reference/kotlin/androidx/package-list" in it.packageListUrl.toURI().toString()
         }, "Expected androidx in external documentation links")
 
 
@@ -423,7 +424,7 @@ class GradleDokkaSourceSetBuilderTest {
         }, "Expected no android sdk in external documentation links")
 
         assertEquals(0, sourceSet.build().externalDocumentationLinks.count {
-            "https://developer.android.com/reference/androidx" in it.packageListUrl.toURI().toString()
+            "https://developer.android.com/reference/kotlin/androidx/package-list" in it.packageListUrl.toURI().toString()
         }, "Expected no androidx in external documentation links")
     }
 

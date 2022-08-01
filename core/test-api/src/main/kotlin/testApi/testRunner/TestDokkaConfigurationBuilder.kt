@@ -54,7 +54,8 @@ class TestDokkaConfigurationBuilder {
         suppressObviousFunctions = suppressObviousFunctions,
         includes = includes.toSet(),
         suppressInheritedMembers = suppressInheritedMembers,
-        delayTemplateSubstitution = delayTemplateSubstitution
+        delayTemplateSubstitution = delayTemplateSubstitution,
+        finalizeCoroutines = false
     )
 
     fun sourceSets(block: SourceSetsBuilder.() -> Unit) {
@@ -105,6 +106,7 @@ class DokkaSourceSetBuilder(
     var externalDocumentationLinks: List<ExternalDocumentationLinkImpl> = emptyList(),
     var sourceLinks: List<SourceLinkDefinitionImpl> = emptyList()
 ) {
+    @Suppress("DEPRECATION")
     fun build() = DokkaSourceSetImpl(
         displayName = displayName,
         sourceSetID = DokkaSourceSetID(moduleName, name),
