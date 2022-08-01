@@ -36,7 +36,7 @@ jobs:
         working-directory: examples/gradle/${{ matrix.projects }}
         if: steps.filter.outputs.examples_changed == 'true'
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         if: steps.filter.outputs.examples_changed == 'true'
         with:
           name: ${{ matrix.projects }}
