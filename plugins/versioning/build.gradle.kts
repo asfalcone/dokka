@@ -17,5 +17,5 @@ dependencies {
 
     val jsoup_version: String by project
     implementation("org.jsoup:jsoup:$jsoup_version")
-    implementation("org.apache.maven:maven-artifact:3.8.5")
+    implementation("org.apache.maven:maven-artifact:3.8.7")
 }
